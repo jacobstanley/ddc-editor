@@ -1,0 +1,64 @@
+<html>
+  <head>
+    <title>DDC Core Flow</title>
+    <link rel="stylesheet" href="/css/reset.css"/>
+    <link rel="stylesheet" href="/codemirror/codemirror.css"/>
+    <link rel="stylesheet" href="/codemirror/theme/mdn-like.css"/>
+    <link rel="stylesheet" href="/css/jellybeans.css"/>
+    <link rel="stylesheet" href="/css/screen.css"/>
+  </head>
+  <body>
+<textarea id="code" name="code">
+module Main
+
+export {
+    main : Unit -&gt; Unit;
+}
+
+import type {
+    rT : Region;
+}
+
+import foreign c value {
+    showInt  : Int# -&gt; Ptr# rT String#;
+    showNat  : Nat# -&gt; Ptr# rT String#;
+    putStrLn : Ptr# rT String# -&gt; Unit;
+}
+with letrec
+
+external (vs : Vector# Nat#)
+ = vs
+
+test    (sz : Nat#)
+ = do   xs  = vgenerate# sz (add# 1#)
+        xs' = external xs
+        y   = vreduce# add# 0# xs'
+        ys  = vfilter# (lt# 5#) xs'
+        z   = vreduce# add# y ys
+        T2# z ys
+
+main    (_ : Unit)
+ = do   res = test 10#
+        case res of
+            T2# i v
+             -&gt; do putStrLn (showNat i)
+                   putStrLn (showNat (vlength# v))
+        ()
+</textarea>
+  </body>
+  <script src="/codemirror/codemirror.js"></script>
+  <script src="/codemirror/keymap/vim.js"></script>
+  <script src="/js/ddc-core.js"></script>
+  <script>
+    var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+      mode: "text/x-ddc-core",
+      lineNumbers: true,
+      matchBrackets: true,
+      styleActiveLine: true,
+      showCursorWhenSelecting: true
+    });
+
+    editor.setOption("theme", "jellybeans");
+    editor.setOption("vimMode", true);
+  </script>
+</html>
