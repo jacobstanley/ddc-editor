@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -w #-}
 
 module Site (app) where
@@ -17,7 +18,11 @@ import qualified Heist.Interpreted as I
 
 import           DDC.Base.Pretty (Pretty, ppr, renderIndent)
 import qualified DDC.Build.Language.Flow as Flow
+import qualified DDC.Core.Flow as Flow
 import           DDC.Core.Load
+import           DDC.Core.Module
+import           DDC.Core.Transform.Reannotate (reannotate)
+import           DDC.Core.Transform.Deannotate (deannotate)
 
 import           Application
 
@@ -29,12 +34,19 @@ handleCheck = method POST $ do
 
     case r of
         Left err -> do
-            writeText "Error: "
+          writeText "Error: "
+          writePretty err
+
+        Right m -> case lower (reannotate (const ()) m) of
+          Left err -> do
+            writeText "Lowering Error: "
             writePretty err
 
-        Right _  -> return ()
+          Right ModuleCore{..} ->
+            writePretty moduleBody
   where
-    load = loadModuleFromString Flow.fragment "(interactive)" 1 Synth . L.unpack
+    load  = loadModuleFromString Flow.fragment "(interactive)" 1 Synth . L.unpack
+    lower = Flow.lowerModule Flow.defaultConfigVector
 
 writePretty :: (Pretty p, MonadSnap m) => p -> m ()
 writePretty = writeText . T.pack . renderIndent . ppr
