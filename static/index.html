@@ -55,12 +55,25 @@ main    (_ : Unit)
   <script src="codemirror/keymap/vim.js"></script>
   <script src="js/ddc-core.js"></script>
   <script>
+    function betterTab(cm) {
+      if (cm.somethingSelected()) {
+        cm.indentSelection("add");
+        } else {
+        cm.replaceSelection(
+          cm.getOption("indentWithTabs") ? "\t" : Array(cm.getOption("indentUnit") + 1).join(" "), "end", "+input");
+      }
+    }
+
     var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
       mode: "text/x-ddc-core",
       lineNumbers: true,
       matchBrackets: true,
       styleActiveLine: true,
-      showCursorWhenSelecting: true
+      showCursorWhenSelecting: true,
+      tabSize: 8,
+      indentUnit: 4,
+      indentWithTabs: false,
+      extraKeys: { Tab: betterTab }
     });
 
     editor.setOption("theme", "jellybeans");
