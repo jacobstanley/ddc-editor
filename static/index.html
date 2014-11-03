@@ -1,13 +1,13 @@
 <html>
   <head>
     <title>DDC Core Flow</title>
-    <link rel="stylesheet" href="/css/reset.css"/>
-    <link rel="stylesheet" href="/codemirror/codemirror.css"/>
-    <link rel="stylesheet" href="/codemirror/theme/mdn-like.css"/>
-    <link rel="stylesheet" href="/css/jellybeans.css"/>
-    <link rel="stylesheet" href="/css/screen.css"/>
+    <link rel="stylesheet" href="css/reset.css"/>
+    <link rel="stylesheet" href="codemirror/codemirror.css"/>
+    <link rel="stylesheet" href="css/jellybeans.css"/>
+    <link rel="stylesheet" href="css/screen.css"/>
   </head>
   <body>
+    <div style="width: 50%; float: left;">
 <textarea id="code" name="code">
 module Main
 
@@ -45,10 +45,14 @@ main    (_ : Unit)
                    putStrLn (showNat (vlength# v))
         ()
 </textarea>
+    </div>
+    <div style="width: 50%; float: right">
+      foo
+    </div>
   </body>
-  <script src="/codemirror/codemirror.js"></script>
-  <script src="/codemirror/keymap/vim.js"></script>
-  <script src="/js/ddc-core.js"></script>
+  <script src="codemirror/codemirror.js"></script>
+  <script src="codemirror/keymap/vim.js"></script>
+  <script src="js/ddc-core.js"></script>
   <script>
     var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
       mode: "text/x-ddc-core",
