@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+add() {
+    echo Adding $1
+    cabal sandbox add-source "../ddc/packages/$1"
+}
+
+add "ddc-base"
+add "ddc-core"
+add "ddc-core-simpl"
+add "ddc-core-eval"
+add "ddc-core-salt"
+add "ddc-core-llvm"
+add "ddc-core-flow"
+add "ddc-core-tetra"
+add "ddc-source-tetra"
+add "ddc-build"
