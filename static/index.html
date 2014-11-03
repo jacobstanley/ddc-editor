@@ -47,7 +47,8 @@ main    (_ : Unit)
 </textarea>
     </div>
     <div style="width: 50%; float: right">
-      foo
+      <div id="ddc-results" class="ddc-results">
+      </div>
     </div>
   </body>
   <script src="codemirror/codemirror.js"></script>
@@ -64,5 +65,23 @@ main    (_ : Unit)
 
     editor.setOption("theme", "jellybeans");
     editor.setOption("vimMode", true);
+
+    var check = function() {
+      var code    = editor.getValue();
+      var results = document.getElementById("ddc-results");
+
+      var request = new XMLHttpRequest();
+      request.open('POST', '/check', true);
+      request.onload  = function() { results.textContent = this.response; };
+      request.onerror = function() { results.textContent = "an unknown error occurred" };
+      request.setRequestHeader('Content-Type', 'text/x-ddc-core; charset=UTF-8');
+      request.send(code);
+    };
+
+    CodeMirror.on(editor, "changes", function(args) {
+      check();
+    });
+
+    check();
   </script>
 </html>

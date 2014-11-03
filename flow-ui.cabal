@@ -34,8 +34,9 @@ executable flow-ui
     , lens                      >= 3.7.6   && < 4.5
 
     -- DDC
-    , ddc-core                  >= 0.4.2.0
+    , ddc-base                  >= 0.4.2.0
     , ddc-build                 >= 0.4.2.0
+    , ddc-core                  >= 0.4.2.0
     , limp-cbc                  >= 0.3.2.0
 
   if flag(development)
