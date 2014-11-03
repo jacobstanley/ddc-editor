@@ -1,0 +1,5 @@
+dist/
+log/access.log
+log/error.log
+*.hi
+*.swp
