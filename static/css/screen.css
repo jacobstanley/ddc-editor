@@ -64,38 +64,3 @@ svg.graph {
   width: 100%;
   height: 100%;
 }
-
-path.edge {
-  fill: none;
-  stroke: #e8e8d3;
-  stroke-width: 4px;
-  cursor: default;
-}
-
-svg:not(.active):not(.ctrl) path.edge {
-  cursor: pointer;
-}
-
-path.edge.canFuse {
-  stroke-dasharray: 10,2;
-}
-
-circle.node {
-  stroke-width: 1.5px;
-  cursor: pointer;
-}
-
-circle.node.type-input {
-  stroke: #e8e8d3 !important;
-  stroke-width: 2.5px;
-}
-
-text {
-  font: 12px sans-serif;
-  pointer-events: none;
-}
-
-text.name {
-  text-anchor: middle;
-  font-weight: bold;
-}
