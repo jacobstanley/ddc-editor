@@ -20,6 +20,7 @@ executable flow-ui
 
   build-depends:
       base                      >= 4.4     && < 5
+    , aeson                     >= 0.8
     , bytestring                >= 0.9.1   && < 0.11
     , heist                     >= 0.14    && < 0.15
     , MonadCatchIO-transformers >= 0.2.1   && < 0.4
@@ -32,6 +33,8 @@ executable flow-ui
     , time                      >= 1.1     && < 1.5
     , xmlhtml                   >= 0.1     && < 0.3
     , lens                      >= 3.7.6   && < 4.5
+    , vector                    >= 0.10
+    , unordered-containers      >= 0.2.5
 
     -- DDC
     , ddc-base                  >= 0.4.2.0

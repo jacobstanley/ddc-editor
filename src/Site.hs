@@ -1,5 +1,7 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -w #-}
 
 module Site (app) where
@@ -7,12 +9,16 @@ module Site (app) where
 import           Control.Applicative
 import           Control.Arrow (second)
 import           Control.Monad
+import           Data.Aeson (ToJSON(..), Value(..), (.=), object)
+import qualified Data.Aeson as A
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.Char (isSpace)
 import           Data.Either
+import qualified Data.HashMap.Strict as H
 import           Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import           Heist
 import qualified Heist.Interpreted as I
 import           Snap.Core
@@ -48,9 +54,8 @@ handleCheck = method POST $ do
     body <- getRequestBody
 
     let result = do
-          ModuleCore{..} <- ppLeft (load body)
-          let mb   = whoNeedsAnnotationsAnyway moduleBody
-              lets = concatMap takeExps . fst . splitXLets $ mb
+          mb <- ppLeft (load body)
+          let lets = concatMap takeExps . fst . splitXLets $ mb
               cnfs = map (second flowGraph) lets
           return cnfs
 
@@ -83,17 +88,34 @@ handleCheck = method POST $ do
                         writeText (T.dropWhile isSpace et)
 
             writeBS "\n\n"
-  where
-    load = fst . loadModuleFromString Flow.fragment "(interactive)" 1 Synth . L.unpack
 
 ------------------------------------------------------------------------------
 
-whoNeedsAnnotationsAnyway = deannotate (const Nothing) . reannotate (const ())
+handleGraph :: Handler App App ()
+handleGraph = method POST $ do
+    body <- getRequestBody
 
-type Graph = Flow.Graph (Flow.CName Flow.Name Flow.Name)
-                        (Flow.Type Flow.Name)
+    let result = do
+          mb <- load body
+          let lets = concatMap takeExps . fst . splitXLets $ mb
+              cnfs = map (second flowGraph) lets
+          return cnfs
 
-flowGraph :: ExpF -> Either Flow.ConversionError Graph
+    writeLBS . A.encode . mergeChildren . toJSON $ result
+
+------------------------------------------------------------------------------
+
+load :: L.ByteString -> Either (Error NameF ErrorF) (Exp () NameF)
+load bs = stripAnnot . moduleBody <$> loadMod bs
+  where
+    loadMod = fst . loadModuleFromString Flow.fragment "(interactive)" 1 Synth . L.unpack
+    stripAnnot = deannotate (const Nothing) . reannotate (const ())
+
+type NameF  = Flow.Name
+type ErrorF = Flow.Error
+type GraphF = Flow.Graph (Flow.CName NameF NameF) (Flow.Type NameF)
+
+flowGraph :: ExpF -> Either Flow.ConversionError GraphF
 flowGraph exp = case Flow.cnfOfExp exp of
     Left err -> Left err
     Right x  -> Right (Flow.graphOfBinds x [])
@@ -111,11 +133,79 @@ ppLeft (Left err) = Left (T.pack (renderIndent (ppr err)))
 ppLeft (Right x)  = Right x
 
 ------------------------------------------------------------------------------
+-- Javascript Type System FTW
+
+-- | Takes an array of array containing objects and merges the inner arrays
+-- objects in to a single object.
+--
+-- Array (Array Object) ==> Array Object
+--
+-- For example:
+--   [ [ { "foo": 1 }, { "bar": 2 } ]
+--   , [ { "baz": 3 } ]
+--   ]
+--
+-- Becomes:
+--   [ { "foo": 1, "bar": 2 }
+--   , { "baz": 3 }
+--   ]
+--
+mergeChildren :: Value -> Value
+mergeChildren (Array xs) = Array (V.map merge xs)
+mergeChildren x          = x
+
+-- | Merges all the objects in the array in to a single object, or is the
+-- identity function if the input is not an array.
+merge :: Value -> Value
+merge (Array xs) = object (concatMap props (V.toList xs))
+merge x          = x
+
+-- | Gets the properties of the object, or the empty list if the value is not
+-- an object.
+props :: Value -> [(Text, Value)]
+props (Object o) = H.toList o
+props _          = []
+
+------------------------------------------------------------------------------
+
+instance ToJSON BindF where
+  toJSON (BNone      typ) = object [ "type" .= prettyText typ ]
+  toJSON (BAnon      typ) = object [ "type" .= prettyText typ ]
+  toJSON (BName name typ) = object [ "type" .= prettyText typ, "name" .= prettyText name ]
+
+instance ToJSON GraphF where
+  toJSON g = object [ "nodes" .= map node ns
+                    , "edges" .= map edge es ]
+    where
+      (ns, es) = Flow.listOfGraph g
+
+      node (name, typ) = object [ "name" .= prettyText name
+                                , "type" .= prettyText typ ]
+
+      edge ((s, t), f) = object [ "source"  .= prettyText s
+                                , "target"  .= prettyText t
+                                , "canFuse" .= f ]
+
+instance ToJSON a => ToJSON (Either (Error NameF ErrorF) a) where
+  toJSON (Left  e) = object [ "error" .= prettyText e ]
+  toJSON (Right x) = toJSON x
+
+instance ToJSON a => ToJSON (Either Flow.ConversionError a) where
+  toJSON (Left  e) = object [ "error" .= show e ]
+  toJSON (Right x) = toJSON x
+
+------------------------------------------------------------------------------
 
 routes :: [(ByteString, Handler App App ())]
 routes = [ ("/check", handleCheck)
-         , ("",       serveDirectory "static")
+         , ("/graph", handleGraph)
+         , ("",       serveDirectoryWith staticConfig "static")
          ]
+
+staticConfig :: MonadSnap m => DirectoryConfig m
+staticConfig = defaultDirectoryConfig { mimeTypes = customTypes }
+  where
+    customTypes = H.insert ".js" "application/javascript;charset=utf-8" defaultMimeTypes
 
 ------------------------------------------------------------------------------
 
