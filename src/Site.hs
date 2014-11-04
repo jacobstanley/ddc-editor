@@ -5,24 +5,39 @@
 module Site (app) where
 
 import           Control.Applicative
+import           Control.Arrow (second)
+import           Control.Monad
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L
+import           Data.Char (isSpace)
+import           Data.Either
+import           Data.Text (Text)
 import qualified Data.Text as T
+import           Heist
+import qualified Heist.Interpreted as I
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Session.Backends.CookieSession
 import           Snap.Util.FileServe
-import           Heist
-import qualified Heist.Interpreted as I
 
 import           DDC.Base.Pretty (Pretty, ppr, renderIndent)
-import qualified DDC.Build.Language.Flow as Flow
-import qualified DDC.Core.Flow as Flow
+import           DDC.Core.Compounds.Simple
+import           DDC.Core.Exp.Simple
 import           DDC.Core.Load
 import           DDC.Core.Module
-import           DDC.Core.Transform.Reannotate (reannotate)
 import           DDC.Core.Transform.Deannotate (deannotate)
+import           DDC.Core.Transform.Reannotate (reannotate)
+
+import qualified DDC.Build.Language.Flow as Flow
+import qualified DDC.Core.Flow as Flow
+import           DDC.Core.Flow.Exp
+import qualified DDC.Core.Flow.Transform.Rates.CnfFromExp as Flow
+import qualified DDC.Core.Flow.Transform.Rates.Combinators as Flow
+import qualified DDC.Core.Flow.Transform.Rates.Fail as Flow
+import qualified DDC.Core.Flow.Transform.Rates.Graph as Flow
+import qualified DDC.Core.Flow.Transform.Rates.SizeInference as Flow
+
 
 import           Application
 
@@ -30,26 +45,70 @@ import           Application
 
 handleCheck :: Handler App App ()
 handleCheck = method POST $ do
-    (r, _) <- load <$> getRequestBody
+    body <- getRequestBody
 
-    case r of
-        Left err -> do
-          writeText "Error: "
-          writePretty err
+    let result = do
+          ModuleCore{..} <- ppLeft (load body)
+          let mb   = whoNeedsAnnotationsAnyway moduleBody
+              lets = concatMap takeExps . fst . splitXLets $ mb
+              cnfs = map (second flowGraph) lets
+          return cnfs
 
-        Right m -> case lower (reannotate (const ()) m) of
-          Left err -> do
-            writeText "Lowering Error: "
-            writePretty err
+    case result of
+        Left err  -> writeText "Error: " >> writeText err
+        Right xs  -> forM_ xs $ \(b, x) -> do
+            let bind = prettyText b
+            writeText bind
+            writeBS "\n"
+            writeText (T.replicate (T.length bind) "=")
 
-          Right ModuleCore{..} ->
-            writePretty moduleBody
+            case x of
+                Left err -> do
+                    writeText "\nError: "
+                    writeText (T.pack (show err))
+
+                Right g  -> do
+                    let (ns, es) = Flow.listOfGraph g
+
+                    writeText "\nNodes:"
+                    forM_ ns $ \n -> do
+                        let nt = prettyText n
+                        writeText "\n"
+                        writeText (T.dropWhile isSpace nt)
+
+                    writeText "\n\nEdges:"
+                    forM_ es $ \e -> do
+                        let et = prettyText e
+                        writeText "\n"
+                        writeText (T.dropWhile isSpace et)
+
+            writeBS "\n\n"
   where
-    load  = loadModuleFromString Flow.fragment "(interactive)" 1 Synth . L.unpack
-    lower = Flow.lowerModule Flow.defaultConfigVector
+    load = fst . loadModuleFromString Flow.fragment "(interactive)" 1 Synth . L.unpack
 
-writePretty :: (Pretty p, MonadSnap m) => p -> m ()
-writePretty = writeText . T.pack . renderIndent . ppr
+------------------------------------------------------------------------------
+
+whoNeedsAnnotationsAnyway = deannotate (const Nothing) . reannotate (const ())
+
+type Graph = Flow.Graph (Flow.CName Flow.Name Flow.Name)
+                        (Flow.Type Flow.Name)
+
+flowGraph :: ExpF -> Either Flow.ConversionError Graph
+flowGraph exp = case Flow.cnfOfExp exp of
+    Left err -> Left err
+    Right x  -> Right (Flow.graphOfBinds x [])
+
+takeExps :: LetsF -> [(BindF, ExpF)]
+takeExps (LLet b e) = [(b, e)]
+takeExps (LRec rbs) = rbs
+takeExps _          = []
+
+prettyText :: (Pretty p) => p -> Text
+prettyText = T.pack . renderIndent . ppr
+
+ppLeft :: Pretty e => Either e a -> Either Text a
+ppLeft (Left err) = Left (T.pack (renderIndent (ppr err)))
+ppLeft (Right x)  = Right x
 
 ------------------------------------------------------------------------------
 
