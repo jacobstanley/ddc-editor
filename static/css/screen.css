@@ -6,6 +6,7 @@ div.ddc-results {
   font-size: 16px;
   font-family: "Pragmata Pro with Powerline", monospace;
   white-space: pre;
+  overflow: scroll;
 
   color: #e8e8d3;
   background-color: #1a1a1a
