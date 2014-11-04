@@ -2,7 +2,7 @@
 // Graph
 
 var width  = 600,
-    height = 600;
+    height = 650;
 
 var radius = 15,
     colors = d3.scale.category10(),
@@ -66,8 +66,8 @@ var createGraph = function(graph) {
 
   nodes.append("circle")
       .attr("r", radius)
-      .style("fill",   function(d) { return colors(d.name); })
-      .style("stroke", function(d) { return darker(colors(d.name)); })
+      .style("fill",   function(d) { return colors(d.cluster); })
+      .style("stroke", function(d) { return darker(colors(d.cluster)); })
       .style("stroke-width", lineWidth);
 
   nodes.append("text")
@@ -77,7 +77,7 @@ var createGraph = function(graph) {
       .style("font-size", "12px")
       .style("font-family", "sans-serif")
       .style("font-weight", "bold")
-      .style("fill", function(d) { return darker(colors(d.name), 2); })
+      .style("fill", function(d) { return darker(colors(d.cluster), 2); })
       .text(function(d) { return d.name; });
 
   force.on("tick", function() {
@@ -104,7 +104,6 @@ var createGraph = function(graph) {
 
 var receiveGraph = function(json) {
   var graphs = JSON.parse(json);
-  console.log(graphs);
 
   var gs = graphs.filter(function(x) {
     return x.nodes && x.nodes.length != 0;
@@ -120,7 +119,7 @@ var receiveGraph = function(json) {
     var node = table[name];
     if (node) return node;
 
-    node = { name: name, type: "(input)" }
+    node = { name: name, cluster: "unknown" }
     g.nodes.push(node);
     table[name] = node
 
@@ -128,12 +127,19 @@ var receiveGraph = function(json) {
   };
 
   g.nodes.forEach(function(n) {
+    n.cluster = "unknown";
     table[n.name] = n;
   });
 
   g.edges.forEach(function(e) {
     e.source = lookup(e.source);
     e.target = lookup(e.target);
+  });
+
+  g.clusters.forEach(function(ns, i) {
+    ns.forEach(function(n) {
+      table[n].cluster = i;
+    });
   });
 
   createGraph(g);

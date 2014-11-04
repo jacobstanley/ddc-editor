@@ -38,6 +38,7 @@ import           DDC.Core.Transform.Reannotate (reannotate)
 import qualified DDC.Build.Language.Flow as Flow
 import qualified DDC.Core.Flow as Flow
 import           DDC.Core.Flow.Exp
+import qualified DDC.Core.Flow.Transform.Rates.Clusters.Linear as Flow
 import qualified DDC.Core.Flow.Transform.Rates.CnfFromExp as Flow
 import qualified DDC.Core.Flow.Transform.Rates.Combinators as Flow
 import qualified DDC.Core.Flow.Transform.Rates.Fail as Flow
@@ -72,7 +73,7 @@ handleCheck = method POST $ do
                     writeText "\nError: "
                     writeText (T.pack (show err))
 
-                Right g  -> do
+                Right (g, _) -> do
                     let (ns, es) = Flow.listOfGraph g
 
                     writeText "\nNodes:"
@@ -112,13 +113,20 @@ load bs = stripAnnot . moduleBody <$> loadMod bs
     stripAnnot = deannotate (const Nothing) . reannotate (const ())
 
 type NameF  = Flow.Name
+type CNameF = Flow.CName NameF NameF
 type ErrorF = Flow.Error
-type GraphF = Flow.Graph (Flow.CName NameF NameF) (Flow.Type NameF)
+type GraphF = Flow.Graph CNameF (Flow.Type NameF)
 
-flowGraph :: ExpF -> Either Flow.ConversionError GraphF
+flowGraph :: ExpF -> Either Flow.ConversionError (GraphF, [[CNameF]])
 flowGraph exp = case Flow.cnfOfExp exp of
-    Left err -> Left err
-    Right x  -> Right (Flow.graphOfBinds x [])
+    Left err   -> Left err
+    Right prog -> Right (mkGraph prog)
+  where
+    mkGraph prog = let env      = maybe [] fst (Flow.generate prog)
+                       g        = Flow.graphOfBinds prog env
+                       tmap a b = Flow.parents prog env a b
+                       clusters = Flow.solve_linear g tmap
+                   in (g, clusters)
 
 takeExps :: LetsF -> [(BindF, ExpF)]
 takeExps (LLet b e) = [(b, e)]
@@ -173,9 +181,10 @@ instance ToJSON BindF where
   toJSON (BAnon      typ) = object [ "type" .= prettyText typ ]
   toJSON (BName name typ) = object [ "type" .= prettyText typ, "name" .= prettyText name ]
 
-instance ToJSON GraphF where
-  toJSON g = object [ "nodes" .= map node ns
-                    , "edges" .= map edge es ]
+instance ToJSON (GraphF, [[CNameF]]) where
+  toJSON (g, nss) = object [ "nodes"    .= map node ns
+                           , "edges"    .= map edge es
+                           , "clusters" .= map (map prettyText) nss ]
     where
       (ns, es) = Flow.listOfGraph g
 
