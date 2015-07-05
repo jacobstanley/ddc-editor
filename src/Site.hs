@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -w #-}
 
 module Site (app) where
@@ -21,6 +22,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import           Heist
 import qualified Heist.Interpreted as I
+import           Text.Shakespeare.Text (sbt)
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Heist

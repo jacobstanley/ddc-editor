@@ -7,7 +7,9 @@ var width  = 600,
 var radius = 15,
     colors = d3.scale.category10(),
     lineColor = "#e8e8d3",
-    lineWidth = "4px";
+    circleWidth = "4px",
+    fuseWidth = "4px",
+    noFuseWidth = "2px";
 
 var darker = function(c, n) {
   var rgb = d3.rgb(c);
@@ -53,8 +55,8 @@ var createGraph = function(graph) {
         .classed("edge", true)
         .style("fill", "transparent")
         .style("stroke", lineColor)
-        .style("stroke-width", lineWidth)
-        .style("stroke-dasharray", function(d) { return d.canFuse ? "10,5" : null; })
+        .style("stroke-width", function(d) { return d.canFuse ? fuseWidth : noFuseWidth; })
+        .style("stroke-dasharray", function(d) { return d.canFuse ? null : "10,2"; })
         .style("marker-end", "url(#arrow)");
 
   var nodes = svg.selectAll(".node")
@@ -68,7 +70,7 @@ var createGraph = function(graph) {
       .attr("r", radius)
       .style("fill",   function(d) { return colors(d.cluster); })
       .style("stroke", function(d) { return darker(colors(d.cluster)); })
-      .style("stroke-width", lineWidth);
+      .style("stroke-width", circleWidth);
 
   nodes.append("text")
       .attr("x", 0)

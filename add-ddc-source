@@ -6,12 +6,13 @@ add() {
 }
 
 add "ddc-base"
+add "ddc-build"
 add "ddc-core"
-add "ddc-core-simpl"
+add "ddc-core-babel"
 add "ddc-core-eval"
-add "ddc-core-salt"
-add "ddc-core-llvm"
 add "ddc-core-flow"
+add "ddc-core-llvm"
+add "ddc-core-salt"
+add "ddc-core-simpl"
 add "ddc-core-tetra"
 add "ddc-source-tetra"
-add "ddc-build"

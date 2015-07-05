@@ -1,0 +1,59 @@
+name:          ddc-editor
+version:       0.4.2.0
+synopsis:      Show ddc-core-flow optimisations.
+description:   Show ddc-core-flow optimisations.
+license:       MIT
+author:        Jacob Stanley
+maintainer:    jacob@stanley.io
+stability:     Experimental
+category:      Web
+build-type:    Simple
+cabal-version: >= 1.18
+
+flag dev
+  description: Whether to build the server in development (interpreted) mode
+  default: False
+
+executable ddc-editor
+  main-is: Main.hs
+  hs-source-dirs: src
+  default-language: Haskell2010
+
+  build-depends:
+      base                      >= 4.4
+    , aeson                     >= 0.8
+    , MonadCatchIO-transformers >= 0.2.1
+    , bytestring                >= 0.9.1
+    , heist                     >= 0.14
+    , mtl                       >= 2
+    , shakespeare               >= 2.0
+    , snap                      >= 0.13
+    , snap-core                 >= 0.9
+    , snap-loader-static        >= 0.9
+    , snap-server               >= 0.9
+    , text                      >= 0.11
+    , time                      >= 1.1
+    , unordered-containers      >= 0.2.5
+    , vector                    >= 0.10
+    , xmlhtml                   >= 0.1
+    , lens                      >= 3.7.6
+
+    -- DDC
+    , ddc-base                  >= 0.4.2.0
+    , ddc-build                 >= 0.4.2.0
+    , ddc-core                  >= 0.4.2.0
+    , ddc-core-flow             >= 0.4.2.0
+    , limp-cbc                  >= 0.3.2.0
+
+  if flag(dev)
+    build-depends:
+      snap-loader-dynamic == 0.10.*
+    cpp-options: -DDEVELOPMENT
+    ghc-options: -threaded -w
+  else
+    ghc-options:
+      -threaded -Wall -O2
+      -fno-warn-orphans
+      -fno-warn-unused-do-bind
+      -funbox-strict-fields
+      -fwarn-tabs
